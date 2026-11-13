@@ -1,0 +1,199 @@
+{
+  "$schema": "https://eips.ethereum.org/EIPS/eip-8004#AgentCard",
+  "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
+  "name": "EtherPulse Sepolia Analyst",
+  "description": "Agente autónomo de análisis cuantitativo, monitoreo on-chain y verificación en Ethereum Sepolia Testnet",
+  "version": "1.0.0",
+  "image": "https://raw.githubusercontent.com/ethereum/ethereum-org-website/master/src/assets/assets/eth-diamond-purple.png",
+  "external_url": "https://etherpulse.io",
+  "active": true,
+  "x402Support": false,
+  "provider": {
+    "name": "EtherPulse Autonomous Labs",
+    "website": "https://etherpulse.io",
+    "contact": "operator@etherpulse.io"
+  },
+  "services": [
+    {
+      "name": "MCP",
+      "endpoint": "https://sepolia-agent.etherpulse.io/mcp/sse",
+      "version": "2024-11-05"
+    },
+    {
+      "name": "A2A",
+      "endpoint": "https://sepolia-agent.etherpulse.io/rpc/v1",
+      "version": "0.3.0"
+    }
+  ],
+  "endpoints": [
+    {
+      "name": "agentWallet",
+      "endpoint": "eip155:11155111:0x0000000000000000000000000000000000000000"
+    }
+  ],
+  "supportedTrust": [
+    "reputation",
+    "crypto-economic",
+    "tee-attestation"
+  ],
+  "erc8004": {
+    "standard": "ERC-8004",
+    "specVersion": "1.0.0",
+    "chainId": 11155111,
+    "network": "Ethereum Sepolia",
+    "agentAddress": "0x0000000000000000000000000000000000000000",
+    "payoutAddress": "0x0000000000000000000000000000000000000000",
+    "paymentRequirements": {
+      "currency": "ETH",
+      "baseFeeWei": "500000000000000",
+      "baseFeeEth": "0.0005",
+      "acceptedTokens": ["ETH", "USDC", "WETH"],
+      "model": "per-task"
+    },
+    "reputationRequirements": {
+      "minimumScore": 80,
+      "minimumFeedbacks": 3,
+      "requiresCryptographicAuth": true
+    }
+  },
+  "a2a": {
+    "protocol": "Google-A2A",
+    "specVersion": "0.3.0",
+    "communicationType": "agent-to-agent",
+    "endpoints": [
+      {
+        "type": "json-rpc",
+        "url": "https://sepolia-agent.etherpulse.io/rpc/v1",
+        "methods": [
+          "tasks.request",
+          "tasks.status",
+          "tasks.verify",
+          "feedback.auth"
+        ]
+      },
+      {
+        "type": "rest",
+        "url": "https://sepolia-agent.etherpulse.io/api/v1",
+        "routes": [
+          "/analyze/liquidity",
+          "/metrics/token",
+          "/audit/safety"
+        ]
+      }
+    ]
+  },
+  "mcp": {
+    "protocolVersion": "2024-11-05",
+    "serverInfo": {
+      "name": "EtherPulse Sepolia MCP Server",
+      "version": "1.0.0"
+    },
+    "transport": {
+      "type": "sse",
+      "url": "https://sepolia-agent.etherpulse.io/mcp/sse"
+    },
+    "tools": [
+      {
+        "name": "get_sepolia_token_metrics",
+        "description": "Obtiene métricas cuantitativas en tiempo real de volumen, volatilidad, holders y liquidez de tokens en Ethereum Sepolia.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "tokenAddress": {
+              "type": "string",
+              "description": "Dirección del contrato ERC-20 en Sepolia"
+            },
+            "timeframe": {
+              "type": "string",
+              "enum": ["1h", "24h", "7d", "30d"],
+              "default": "24h"
+            }
+          },
+          "required": ["tokenAddress"]
+        }
+      },
+      {
+        "name": "analyze_liquidity_pool",
+        "description": "Analiza la profundidad de liquidez, impermanent loss histórico, slippage estimado y reservas para pares en Uniswap v3 en Ethereum Sepolia.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "poolAddress": {
+              "type": "string",
+              "description": "Dirección del pool de liquidez en Sepolia"
+            },
+            "dex": {
+              "type": "string",
+              "enum": ["UniswapV3"],
+              "default": "UniswapV3"
+            },
+            "pair": {
+              "type": "string",
+              "description": "Símbolos del par analizado (ej. WETH/USDC)"
+            }
+          },
+          "required": ["poolAddress", "pair"]
+        }
+      },
+      {
+        "name": "verify_contract_safety",
+        "description": "Auditoría estática rápida de seguridad on-chain para smart contracts en Ethereum Sepolia (honeypot, mint ilimitado, ownership renounced, proxies).",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "targetContract": {
+              "type": "string",
+              "description": "Dirección del smart contract a auditar en Sepolia"
+            },
+            "strictMode": {
+              "type": "boolean",
+              "default": true
+            }
+          },
+          "required": ["targetContract"]
+        }
+      },
+      {
+        "name": "get_agent_passport",
+        "description": "Consulta on-chain en tiempo real del pasaporte, identidad, dueño y metadatos de cualquier agente ERC-8004 en 8004scan (Sepolia).",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "agentId": {
+              "type": "number",
+              "default": 11287,
+              "description": "Token ID del Agente ERC-8004 a consultar"
+            },
+            "registryAddress": {
+              "type": "string",
+              "default": "0x8004A818BFB912233c491871b3d84c89A494BD9e",
+              "description": "Contrato IdentityRegistry en Sepolia"
+            }
+          }
+        }
+      }
+    ]
+  },
+  "capabilities": [
+    "defi_analytics",
+    "liquidity_pool_assessment",
+    "smart_contract_security",
+    "onchain_oracle_attestation",
+    "sepolia_monitoring"
+  ],
+  "llm_model": {
+    "provider": "Anthropic",
+    "model": "claude-3-5-sonnet-20241022",
+    "context_window": 200000,
+    "temperature": 0.2
+  },
+  "tags": [
+    "erc8004",
+    "ethereum-sepolia",
+    "defi",
+    "mcp",
+    "a2a",
+    "autonomous-agent",
+    "quantitative-analysis"
+  ]
+}

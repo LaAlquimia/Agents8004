@@ -1,0 +1,1319 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clase Magistral: ERC-8004, Global Registry y Servidores MCP</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap" rel="stylesheet">
+
+  <style>
+    /* ==========================================================================
+       DESIGN SYSTEM TOKENS & RESET (Obsidian, Cyan, Emerald & Terracotta)
+       ========================================================================== */
+    :root {
+      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+
+      /* Dark Tech Canvas Palette */
+      --bg-canvas: #0e0e0d;
+      --bg-surface: #171615;
+      --bg-card: rgba(28, 26, 24, 0.85);
+      --bg-card-hover: rgba(38, 35, 32, 0.95);
+      --bg-code: #121110;
+
+      /* Primary & Semantic Accents */
+      --cyan: #38bdf8;
+      --cyan-rgb: 56, 189, 248;
+      --cyan-glow: rgba(56, 189, 248, 0.18);
+
+      --emerald: #10b981;
+      --emerald-rgb: 16, 185, 129;
+      --emerald-glow: rgba(16, 185, 129, 0.18);
+
+      --terracotta: #d97757;
+      --terracotta-rgb: 217, 119, 87;
+      --amber: #f59e0b;
+      --purple: #a855f7;
+
+      /* High-contrast Neutral Text */
+      --text-white: #faf7f2;
+      --text-muted: #a8a29e;
+      --text-faint: #78716c;
+
+      /* Borders & Shadows */
+      --border: rgba(255, 255, 255, 0.08);
+      --border-accent: rgba(56, 189, 248, 0.35);
+      --border-emerald: rgba(16, 185, 129, 0.35);
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-canvas);
+      color: var(--text-white);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+    }
+
+    /* Ambient Background Gradients */
+    .ambient-bg {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+    .ambient-glow-1 {
+      position: absolute;
+      top: -15%;
+      left: 15%;
+      width: 60vw;
+      height: 60vw;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(56, 189, 248, 0.06) 0%, transparent 65%);
+      filter: blur(80px);
+    }
+    .ambient-glow-2 {
+      position: absolute;
+      bottom: -15%;
+      right: 10%;
+      width: 55vw;
+      height: 55vw;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(16, 185, 129, 0.05) 0%, transparent 65%);
+      filter: blur(80px);
+    }
+    .grid-lines {
+      position: absolute;
+      inset: 0;
+      background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 48px 48px;
+      opacity: 0.6;
+    }
+
+    /* ==========================================================================
+       HEADER & NAVIGATION BAR
+       ========================================================================== */
+    header.deck-header {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 36px;
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      background: rgba(14, 14, 13, 0.75);
+    }
+
+    .brand-cluster {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .badge-network {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: var(--cyan);
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+    }
+    .badge-network::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 8px var(--cyan);
+      animation: pulse-dot 2s infinite ease-in-out;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
+    }
+
+    .deck-title-crumb {
+      font-size: 0.88rem;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+    .deck-title-crumb strong {
+      color: var(--text-white);
+    }
+
+    .header-pills {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .pill-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      width: 30px;
+      height: 30px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .pill-btn:hover {
+      background: rgba(255, 255, 255, 0.09);
+      color: var(--text-white);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+    .pill-btn.active {
+      background: var(--cyan);
+      color: #000;
+      font-weight: 700;
+      border-color: var(--cyan);
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.4);
+    }
+
+    .btn-fs {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      cursor: pointer;
+      margin-left: 8px;
+      transition: all 0.2s;
+    }
+    .btn-fs:hover {
+      color: var(--text-white);
+      border-color: var(--text-muted);
+    }
+
+    /* ==========================================================================
+       VIEWPORT & SLIDE STACK
+       ========================================================================== */
+    main.viewport {
+      position: relative;
+      z-index: 5;
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 24px;
+      max-width: 1440px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 24px;
+      max-width: 1392px;
+      margin: 0 auto;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(18px) scale(0.99);
+      transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .slide.active {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0) scale(1);
+    }
+
+    .slide-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 38px 46px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(16px);
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      max-height: calc(100vh - 160px);
+      overflow-y: auto;
+    }
+
+    /* Typography inside slides */
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--cyan);
+    }
+    .eyebrow.terracotta { color: var(--terracotta); }
+    .eyebrow.emerald { color: var(--emerald); }
+    .eyebrow.purple { color: var(--purple); }
+    .eyebrow-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    h1.slide-title {
+      font-size: 2.35rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      color: var(--text-white);
+    }
+    h2.slide-title {
+      font-size: 1.95rem;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      line-height: 1.2;
+      color: var(--text-white);
+    }
+
+    .slide-lead {
+      font-size: 1.05rem;
+      line-height: 1.55;
+      color: var(--text-muted);
+      max-width: 950px;
+    }
+    .slide-lead strong {
+      color: var(--text-white);
+    }
+
+    /* Responsive Grid Layouts */
+    .grid-2col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-top: 4px;
+    }
+    .grid-3col {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      margin-top: 4px;
+    }
+
+    .feature-box {
+      background: rgba(255, 255, 255, 0.025);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: all 0.25s ease;
+    }
+    .feature-box:hover {
+      border-color: rgba(255, 255, 255, 0.18);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.3);
+    }
+    .feature-box.highlight {
+      border-color: var(--border-accent);
+      background: rgba(56, 189, 248, 0.04);
+    }
+    .feature-box.highlight-emerald {
+      border-color: var(--border-emerald);
+      background: rgba(16, 185, 129, 0.04);
+    }
+
+    .box-icon {
+      font-size: 1.5rem;
+      line-height: 1;
+    }
+    .box-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text-white);
+    }
+    .box-desc {
+      font-size: 0.9rem;
+      line-height: 1.5;
+      color: var(--text-muted);
+    }
+
+    /* Code Snippets & Panels */
+    .code-panel {
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      font-family: var(--font-mono);
+      font-size: 0.83rem;
+      display: flex;
+      flex-direction: column;
+    }
+    .code-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border-bottom: 1px solid var(--border);
+      font-size: 0.74rem;
+      color: var(--text-muted);
+    }
+    .code-file {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--cyan);
+      font-weight: 600;
+    }
+    .code-body {
+      padding: 18px 20px;
+      line-height: 1.6;
+      color: #e2e8f0;
+      overflow-x: auto;
+    }
+    .code-body .keyword { color: #f43f5e; font-weight: 600; }
+    .code-body .function { color: #38bdf8; }
+    .code-body .type { color: #a855f7; }
+    .code-body .string { color: #10b981; }
+    .code-body .comment { color: #64748b; font-style: italic; }
+    .code-body .hash { color: #f59e0b; }
+
+    /* Live Data Callout */
+    .live-data-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 6px;
+    }
+    .data-pill {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      padding: 8px 14px;
+      border-radius: var(--radius-sm);
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .data-pill .label { color: var(--text-faint); }
+    .data-pill .val { color: var(--cyan); font-weight: 600; }
+    .data-pill .val.emerald { color: var(--emerald); }
+    .data-pill a {
+      color: var(--cyan);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    /* Steps Tracker */
+    .step-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--cyan);
+      color: #000;
+      font-size: 0.78rem;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      margin-right: 8px;
+    }
+
+    /* ==========================================================================
+       BOTTOM DECK FOOTER & PROGRESS
+       ========================================================================== */
+    footer.deck-footer {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 36px;
+      border-top: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      background: rgba(14, 14, 13, 0.75);
+    }
+
+    .progress-track {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--cyan), var(--emerald));
+      width: 8.33%;
+      transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .footer-section {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .key-hints {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 0.75rem;
+      color: var(--text-faint);
+      font-family: var(--font-mono);
+    }
+    .key-hints kbd {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    .nav-controls {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .slide-counter {
+      font-family: var(--font-mono);
+      font-size: 0.88rem;
+      color: var(--text-white);
+      font-weight: 600;
+    }
+    .slide-counter span {
+      color: var(--text-faint);
+      font-weight: 400;
+    }
+
+    .btn-nav {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      color: var(--text-white);
+      width: 38px;
+      height: 38px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: all 0.2s;
+    }
+    .btn-nav:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+    .btn-nav:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    @media (max-width: 1024px) {
+      .grid-2col, .grid-3col {
+        grid-template-columns: 1fr;
+      }
+      .slide-card {
+        padding: 28px;
+      }
+      h1.slide-title { font-size: 2rem; }
+      h2.slide-title { font-size: 1.6rem; }
+      .key-hints { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Ambient Light Effect -->
+  <div class="ambient-bg" aria-hidden="true">
+    <div class="ambient-glow-1"></div>
+    <div class="ambient-glow-2"></div>
+    <div class="grid-lines"></div>
+  </div>
+
+  <!-- TOP DECK HEADER -->
+  <header class="deck-header">
+    <div class="brand-cluster">
+      <div class="badge-network">Clase Magistral • Sepolia (11155111)</div>
+      <div class="deck-title-crumb">
+        Ingeniería Web3 & AI: <strong>ERC-8004, Global Registry y Servidores MCP</strong>
+      </div>
+    </div>
+
+    <!-- Slide Jump Pills (12 Diapositivas) -->
+    <div class="header-pills" id="slidePills">
+      <button class="pill-btn active" data-index="0" title="Portada & Objetivos">01</button>
+      <button class="pill-btn" data-index="1" title="El Problema">02</button>
+      <button class="pill-btn" data-index="2" title="La Tríada">03</button>
+      <button class="pill-btn" data-index="3" title="Identidad & Poderes">04</button>
+      <button class="pill-btn" data-index="4" title="Reputación & TEE">05</button>
+      <button class="pill-btn" data-index="5" title="Registro Global">06</button>
+      <button class="pill-btn" data-index="6" title="Secreto Base64">07</button>
+      <button class="pill-btn" data-index="7" title="Conectar la MCP">08</button>
+      <button class="pill-btn" data-index="8" title="Servir la MCP">09</button>
+      <button class="pill-btn" data-index="9" title="Inspección MCP">10</button>
+      <button class="pill-btn" data-index="10" title="Simulación Lab">11</button>
+      <button class="pill-btn" data-index="11" title="Guía Práctica">12</button>
+      <button class="btn-fs" id="fullscreenBtn" title="Pantalla completa [F]">⛶ F</button>
+    </div>
+  </header>
+
+  <!-- MAIN SLIDES VIEWPORT -->
+  <main class="viewport">
+
+    <!-- SLIDE 1: PORTADA & OBJETIVOS -->
+    <section class="slide active" id="slide-0">
+      <div class="slide-card">
+        <div class="eyebrow">
+          <span class="eyebrow-dot"></span>
+          Ingeniería de Agentes • Estándar EIP/ERC-8004 + MCP
+        </div>
+        <h1 class="slide-title">Agentes Trustless: Global Registry y Servidores MCP</h1>
+        <p class="slide-lead">
+          <strong>Objetivo de la sesión:</strong> Dominar el flujo de ingeniería para <strong>registrar agentes en el contrato canónico global ERC-8004</strong>, 
+          <strong>vincularles herramientas mediante Model Context Protocol (MCP)</strong> y <strong>servir la infraestructura MCP en producción</strong>.
+        </p>
+        <div class="grid-3col" style="margin-top: 10px;">
+          <div class="feature-box highlight">
+            <div class="box-icon">🌐</div>
+            <div class="box-title">1. Global Registry</div>
+            <div class="box-desc">
+              Registro canónico en <code>0x8004A818...</code> desplegado vía <code>CREATE2</code> en 29 redes EVM con indexación en 8004scan.com.
+            </div>
+          </div>
+          <div class="feature-box highlight-emerald">
+            <div class="box-icon">🔌</div>
+            <div class="box-title">2. Conexión MCP</div>
+            <div class="box-desc">
+              Estructuración de la <strong>Agent Card</strong> oficial (#registration-v1) con catálogos JSON-Schema de herramientas invocables.
+            </div>
+          </div>
+          <div class="feature-box">
+            <div class="box-icon">🚀</div>
+            <div class="box-title">3. Servidor MCP Real</div>
+            <div class="box-desc">
+              Despliegue de un servidor MCP en Node/Bun que sirve herramientas financieras on-chain vía <strong>HTTP/SSE</strong> y <strong>STDIO</strong>.
+            </div>
+          </div>
+        </div>
+        <div class="live-data-row">
+          <div class="data-pill">
+            <span class="label">Red:</span>
+            <span class="val">Ethereum Sepolia (ChainID: 11155111)</span>
+          </div>
+          <div class="data-pill">
+            <span class="label">Agente de Estudio:</span>
+            <span class="val"><a href="https://8004scan.com/agent/11287" target="_blank">Agent #11287 en 8004scan</a></span>
+          </div>
+          <div class="data-pill">
+            <span class="label">Servidor MCP Local:</span>
+            <span class="val emerald">http://localhost:3001/sse</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 2: EL PROBLEMA -->
+    <section class="slide" id="slide-1">
+      <div class="slide-card">
+        <div class="eyebrow terracotta">
+          <span class="eyebrow-dot"></span>
+          Planteamiento del Problema • Machine-to-Machine
+        </div>
+        <h2 class="slide-title">El Dilema: ¿Por qué las IAs no pueden comerciar solas hoy?</h2>
+        <p class="slide-lead">
+          Los Modelos de Lenguaje (LLMs) hoy razonan y llaman APIs. Sin embargo, en la economía digital abierta 
+          son <em>fantasmas sin identidad soberana, sin billetera verificable y sin reputación resistente a trampas</em>.
+        </p>
+        <div class="grid-2col">
+          <div class="feature-box" style="border-color: rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.03);">
+            <div class="box-icon">⚠️</div>
+            <div class="box-title" style="color: #f87171;">El Problema Actual (Web2)</div>
+            <div class="box-desc">
+              • <strong>Falta de Cédula Universal:</strong> No se puede distinguir entre un agente legítimo y un clon.<br><br>
+              • <strong>Ataques Sybil (Reseñas Falsas):</strong> Un desarrollador malicioso crea 10,000 bots para autocalificarse con 5 estrellas.<br><br>
+              • <strong>Falta de Descubrimiento de Capacidades:</strong> Si una IA quiere contratar a otra, no hay un protocolo estándar para saber qué herramientas expone.
+            </div>
+          </div>
+          <div class="feature-box highlight-emerald">
+            <div class="box-icon">💡</div>
+            <div class="box-title" style="color: var(--emerald);">La Solución: ERC-8004 + MCP</div>
+            <div class="box-desc">
+              Diseñado por <strong>MetaMask, Ethereum Foundation, Google y Coinbase</strong>:<br><br>
+              • <strong>ERC-8004:</strong> Provee el pasaporte NFT de identidad, la reputación firmada y la validación en hardware seguro.<br><br>
+              • <strong>Model Context Protocol (MCP):</strong> Estandariza la forma en que el agente anuncia sus funciones y las ejecuta para otros clientes.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 3: LA TRÍADA ARQUITECTÓNICA -->
+    <section class="slide" id="slide-2">
+      <div class="slide-card">
+        <div class="eyebrow">
+          <span class="eyebrow-dot"></span>
+          Diseño Modular • Tres Registros Singleton
+        </div>
+        <h2 class="slide-title">La Tríada Arquitectónica de ERC-8004</h2>
+        <p class="slide-lead">
+          El estándar divide las responsabilidades en <strong>tres contratos inteligentes independientes</strong> en Ethereum Sepolia:
+        </p>
+        <div class="grid-3col">
+          <div class="feature-box highlight">
+            <div class="box-icon">1️⃣</div>
+            <div class="box-title">Identity Registry</div>
+            <div class="box-desc">
+              <strong>Función:</strong> Acuña el pasaporte NFT (<code>agentId</code>), almacena la Agent Card y asigna la wallet operativa.<br><br>
+              <strong>Contrato Canónico:</strong> <code>0x8004A818...</code>
+            </div>
+          </div>
+          <div class="feature-box highlight-emerald">
+            <div class="box-icon">2️⃣</div>
+            <div class="box-title">Reputation Registry</div>
+            <div class="box-desc">
+              <strong>Función:</strong> Almacena puntuaciones (0-100) y tags. Exige firma ECDSA (<code>feedbackAuth</code>) para calificar.<br><br>
+              <strong>Contrato Canónico:</strong> <code>0x8004B663...</code>
+            </div>
+          </div>
+          <div class="feature-box">
+            <div class="box-icon">3️⃣</div>
+            <div class="box-title">Validation Registry</div>
+            <div class="box-desc">
+              <strong>Función:</strong> Maneja auditorías asíncronas para tareas financieras críticas mediante enclaves TEE (Intel SGX) o zkML.<br><br>
+              <strong>Modelo:</strong> <em>Request ➔ Response</em>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 4: IDENTIDAD Y SEPARACIÓN DE PODERES -->
+    <section class="slide" id="slide-3">
+      <div class="slide-card">
+        <div class="eyebrow">
+          <span class="eyebrow-dot"></span>
+          Pilar I • Seguridad y Gobernanza
+        </div>
+        <h2 class="slide-title">Separación de Poderes: Owner vs Operational Hot Wallet</h2>
+        <div class="grid-2col">
+          <div style="display: flex; flex-direction: column; gap: 14px;">
+            <p class="slide-lead" style="font-size: 1rem;">
+              En producción, <strong>nunca se debe dejar la clave legal del agente en el servidor de IA</strong>. ERC-8004 establece una estricta separación:
+            </p>
+            <div class="feature-box highlight">
+              <div class="box-title">1. Propietario Legal (Owner / DAO / Humano)</div>
+              <div class="box-desc">
+                • Dueño del NFT ERC-721 registrado en <code>ownerOf(agentId)</code>.<br>
+                • Custodiado en una Hardware Wallet (Ledger) o multisig.<br>
+                • Es la única cuenta autorizada a actualizar la Agent Card o transferir el agente.
+              </div>
+            </div>
+            <div class="feature-box highlight-emerald">
+              <div class="box-title">2. Billetera de Trabajo (Operational Hot Wallet)</div>
+              <div class="box-desc">
+                • Clave privada que corre en el proceso de la IA.<br>
+                • Firma peticiones diarias, transacciones en Sepolia y emite recibos <code>feedbackAuth</code>.<br>
+                • Si el servidor es atacado, el atacante <em>no puede robar la propiedad del agente</em>.
+              </div>
+            </div>
+          </div>
+          <div class="code-panel">
+            <div class="code-header">
+              <span class="code-file">contracts/IdentityRegistry.sol</span>
+              <span>Solidity 0.8.24</span>
+            </div>
+            <pre class="code-body"><code><span class="comment">// Separación en el registro de identidad</span>
+<span class="keyword">function</span> <span class="function">registerAgent</span>(
+    <span class="type">string calldata</span> agentURI,
+    <span class="type">address</span> operationalAddress
+) <span class="keyword">external returns</span> (<span class="type">uint256</span>) {
+    _agentIdCounter++;
+    <span class="type">uint256</span> newAgentId = _agentIdCounter;
+
+    <span class="comment">// El NFT se acuña al Owner (msg.sender)</span>
+    <span class="function">_safeMint</span>(msg.sender, newAgentId);
+    <span class="function">_setTokenURI</span>(newAgentId, agentURI);
+
+    <span class="comment">// La hot wallet queda asociada para trabajo</span>
+    _agentAddresses[newAgentId] = operationalAddress;
+
+    <span class="keyword">return</span> newAgentId;
+}</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 5: REPUTACIÓN Y VALIDACIÓN -->
+    <section class="slide" id="slide-4">
+      <div class="slide-card">
+        <div class="eyebrow terracotta">
+          <span class="eyebrow-dot"></span>
+          Pilar II & III • Confianza Verificable
+        </div>
+        <h2 class="slide-title">Reputación Anti-Sybil y Validación Criptográfica</h2>
+        <div class="grid-2col">
+          <div class="feature-box" style="border-color: rgba(217, 119, 87, 0.4);">
+            <div class="box-title" style="color: var(--terracotta);">El Candado feedbackAuth (Reputación)</div>
+            <div class="box-desc">
+              • <strong>Anti-Autoelogio:</strong> El smart contract revierte si <code>msg.sender == owner</code> o la <code>operationalWallet</code>.<br><br>
+              • <strong>Firma Criptográfica Obligatoria:</strong> Para calificar a una IA, el cliente debe presentar un recibo firmado por la clave de trabajo del agente:<br>
+              <code>digest = keccak256(cliente, agentId, taskHash)</code><br><br>
+              • <strong>Resultado:</strong> Es matemáticamente imposible inflar calificaciones con bots falsos.
+            </div>
+          </div>
+          <div class="feature-box" style="border-color: rgba(168, 85, 247, 0.4);">
+            <div class="box-title" style="color: var(--purple);">Validación en Enclaves TEE / zkML</div>
+            <div class="box-desc">
+              • <strong>Para Tareas Críticas:</strong> Cuando una IA mueve liquidez en Uniswap o diagnostica código, la reputación no basta.<br><br>
+              • <strong>El Validador TEE (Intel SGX):</strong> Un nodo independiente re-ejecuta el algoritmo en hardware sellado y emite <code>validationResponse(100, TEE-ATTESTED)</code>.<br><br>
+              • <strong>Auditado en el Taller:</strong> Nuestro nodo <code>zkSepolia-IntelSGX-Enclave-01</code> certifica la exactitud matemática.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 6: EL REGISTRO GLOBAL CANÓNICO (NUEVA CENTRAL) -->
+    <section class="slide" id="slide-5">
+      <div class="slide-card">
+        <div class="eyebrow">
+          <span class="eyebrow-dot"></span>
+          Enfoque Práctico • 8004scan Global Registry
+        </div>
+        <h2 class="slide-title">El Registro Global: Cómo Registrar un Agente en 8004scan</h2>
+        <div class="grid-2col">
+          <div style="display: flex; flex-direction: column; gap: 14px;">
+            <p class="slide-lead" style="font-size: 1rem;">
+              En la red oficial, el contrato canónico singleton es común a todas las blockchains EVM vía <code>CREATE2</code>:
+            </p>
+            <div class="feature-box highlight">
+              <div class="box-title">Los 4 Pasos del Registro Global:</div>
+              <div class="box-desc" style="line-height: 1.7;">
+                1. <strong>Configurar Wallet:</strong> Definir <code>PRIVATE_KEY</code> en <code>.env</code> con fondos en Sepolia.<br>
+                2. <strong>Preparar Agent Card:</strong> Configurar <code>src/agentCard.json</code> con endpoints y herramientas MCP.<br>
+                3. <strong>Empaquetar en Base64:</strong> Generar el Data URI on-chain sin dependencias externas.<br>
+                4. <strong>Llamar a <code>register(agentURI)</code>:</strong> Ejecutar <code>bun run registry_global</code>.
+              </div>
+            </div>
+            <div class="feature-box highlight-emerald">
+              <div class="box-title">Agente de Estudio de la Clase:</div>
+              <div class="box-desc">
+                • <strong>ID Oficial:</strong> <a href="https://8004scan.com/agent/11287" target="_blank" style="color: var(--emerald); font-weight: 700;">Agent #11287 (EtherPulse Analyst)</a><br>
+                • <strong>Contrato Sepolia:</strong> <code>0x8004A818BFB912233c491871b3d84c89A494BD9e</code>
+              </div>
+            </div>
+          </div>
+          <div class="code-panel">
+            <div class="code-header">
+              <span class="code-file">scripts/register-global.js</span>
+              <span>Interacción On-Chain Sepolia</span>
+            </div>
+            <pre class="code-body"><code><span class="comment">// 1. Conectar con el IdentityRegistry canónico</span>
+<span class="keyword">const</span> contract = <span class="keyword">new</span> ethers.<span class="function">Contract</span>(
+  <span class="string">"0x8004A818BFB912233c491871b3d84c89A494BD9e"</span>,
+  [<span class="string">"function register(string agentURI) external returns (uint256)"</span>],
+  wallet
+);
+
+<span class="comment">// 2. Codificar la Agent Card en Base64</span>
+<span class="keyword">const</span> dataUri = <span class="function">encodeAgentCardToDataUri</span>(agentCard);
+
+<span class="comment">// 3. Enviar transacción a Sepolia</span>
+<span class="keyword">const</span> tx = <span class="keyword">await</span> contract.<span class="function">register</span>(dataUri);
+<span class="keyword">const</span> receipt = <span class="keyword">await</span> tx.<span class="function">wait</span>();
+
+<span class="comment">// 4. El evento Transfer(0x0, wallet, tokenId) emite el ID (#11287)</span></code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 7: EL SECRETO DEL BASE64 -->
+    <section class="slide" id="slide-6">
+      <div class="slide-card">
+        <div class="eyebrow terracotta">
+          <span class="eyebrow-dot"></span>
+          Resolución de Metadatos • Disponibilidad Permanente
+        </div>
+        <h2 class="slide-title">El Secreto del Agent Card: ¿Por qué `{}` en 8004scan?</h2>
+        <div class="grid-2col">
+          <div style="display: flex; flex-direction: column; gap: 14px;">
+            <p class="slide-lead" style="font-size: 1rem;">
+              Al registrar un agente con <code>ipfs://bafybeif...</code>, el explorador mostraba un JSON vacío <code>{}</code>. 
+              Veamos el diagnóstico técnico y la solución de ingeniería:
+            </p>
+            <div class="feature-box" style="border-color: rgba(239, 68, 68, 0.4); background: rgba(239, 68, 68, 0.03);">
+              <div class="box-title" style="color: #f87171;">El Problema del Gateway IPFS</div>
+              <div class="box-desc">
+                Si el CID de IPFS no está anclado (*pinned*) activamente en nodos con alta disponibilidad, los gateways de 8004scan dan timeout (404) y devuelven <code>{}</code>.
+              </div>
+            </div>
+            <div class="feature-box highlight-emerald">
+              <div class="box-title" style="color: var(--emerald);">La Solución: Data URI Base64 On-Chain</div>
+              <div class="box-desc">
+                Codificamos el JSON en <code>data:application/json;base64,...</code> y llamamos a <code>setAgentURI(11287, dataURI)</code>. 
+                Los datos quedan <strong>grabados en el almacenamiento de Ethereum</strong>, sin servidores externos y con ~79k gas de actualización.
+              </div>
+            </div>
+          </div>
+          <div class="code-panel">
+            <div class="code-header">
+              <span class="code-file">scripts/update-card.js</span>
+              <span>Actualización en Caliente</span>
+            </div>
+            <pre class="code-body"><code><span class="comment">// 1. Leer src/agentCard.json</span>
+<span class="keyword">const</span> card = JSON.<span class="function">parse</span>(fs.<span class="function">readFileSync</span>(<span class="string">"src/agentCard.json"</span>));
+
+<span class="comment">// 2. Codificar en Data URI RFC-2397</span>
+<span class="keyword">const</span> dataUri = <span class="string">"data:application/json;base64,"</span> +
+  Buffer.<span class="function">from</span>(JSON.<span class="function">stringify</span>(card)).<span class="function">toString</span>(<span class="string">"base64"</span>);
+
+<span class="comment">// 3. Invocar setAgentURI en Sepolia (~79,000 gas)</span>
+<span class="keyword">await</span> canonicalContract.<span class="function">setAgentURI</span>(<span class="hash">11287</span>, dataUri);
+<span class="comment">// ✔ 8004scan actualiza en tiempo real de inmediato</span></code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 8: CÓMO CONECTAR LA MCP (NUEVA CENTRAL) -->
+    <section class="slide" id="slide-7">
+      <div class="slide-card">
+        <div class="eyebrow emerald">
+          <span class="eyebrow-dot"></span>
+          Integración LLM • Model Context Protocol
+        </div>
+        <h2 class="slide-title">Cómo Conectar la MCP al Agente ERC-8004</h2>
+        <div class="grid-2col">
+          <div style="display: flex; flex-direction: column; gap: 14px;">
+            <p class="slide-lead" style="font-size: 1rem;">
+              El protocolo <strong>MCP (Model Context Protocol)</strong> es el puente entre el razonamiento de la IA y la ejecución técnica. 
+              En la <strong>Agent Card</strong> se declaran dos componentes clave:
+            </p>
+            <div class="feature-box">
+              <div class="box-title">1. El Bloque de Servicios (Endpoint de Transporte)</div>
+              <div class="box-desc">
+                Indica dónde está escuchando el agente para peticiones MCP:<br>
+                <code>"services": [{ "name": "MCP", "endpoint": "http://localhost:3001/sse" }]</code>
+              </div>
+            </div>
+            <div class="feature-box highlight-emerald">
+              <div class="box-title">2. Catálogo de Herramientas y Schemas (tools)</div>
+              <div class="box-desc">
+                Declara las 4 herramientas disponibles con sus tipos Zod / JSON-Schema:<br>
+                • <code>analyze_liquidity_pool</code> (DEX, Pair, TVL, Slippage)<br>
+                • <code>verify_contract_safety</code> (Auditoría on-chain Sepolia)<br>
+                • <code>get_sepolia_token_metrics</code> (ERC-20 metrics)<br>
+                • <code>get_agent_passport</code> (Consulta de identidad ERC-8004)
+              </div>
+            </div>
+          </div>
+          <div class="code-panel">
+            <div class="code-header">
+              <span class="code-file">src/agentCard.json</span>
+              <span>Definición Oficial de Herramientas</span>
+            </div>
+            <pre class="code-body"><code><span class="string">"mcp"</span>: {
+  <span class="string">"protocolVersion"</span>: <span class="string">"2024-11-05"</span>,
+  <span class="string">"transport"</span>: { <span class="string">"type"</span>: <span class="string">"sse"</span>, <span class="string">"url"</span>: <span class="string">"http://localhost:3001/sse"</span> },
+  <span class="string">"tools"</span>: [
+    {
+      <span class="string">"name"</span>: <span class="string">"analyze_liquidity_pool"</span>,
+      <span class="string">"description"</span>: <span class="string">"Analiza liquidez y slippage en Uniswap v3 Sepolia."</span>,
+      <span class="string">"inputSchema"</span>: {
+        <span class="string">"type"</span>: <span class="string">"object"</span>,
+        <span class="string">"properties"</span>: { <span class="string">"pair"</span>: { <span class="string">"type"</span>: <span class="string">"string"</span>, <span class="string">"default"</span>: <span class="string">"WETH/USDC"</span> } }
+      }
+    },
+    {
+      <span class="string">"name"</span>: <span class="string">"get_agent_passport"</span>,
+      <span class="string">"description"</span>: <span class="string">"Consulta pasaporte on-chain en 8004scan."</span>,
+      <span class="string">"inputSchema"</span>: { <span class="string">"properties"</span>: { <span class="string">"agentId"</span>: { <span class="string">"type"</span>: <span class="string">"number"</span> } } }
+    }
+  ]
+}</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 9: CÓMO SERVIR LA MCP (NUEVA CENTRAL) -->
+    <section class="slide" id="slide-8">
+      <div class="slide-card">
+        <div class="eyebrow">
+          <span class="eyebrow-dot"></span>
+          Infraestructura de Servidor • src/mcp/server.mjs
+        </div>
+        <h2 class="slide-title">Cómo Servir la MCP: Arquitectura SSE & STDIO</h2>
+        <div class="grid-2col">
+          <div style="display: flex; flex-direction: column; gap: 14px;">
+            <p class="slide-lead" style="font-size: 1rem;">
+              Hemos construido un servidor MCP de grado de producción en <code>src/mcp/server.mjs</code> usando 
+              el SDK oficial <code>@modelcontextprotocol/sdk</code>. Soporta dos modos de operación:
+            </p>
+            <div class="feature-box highlight">
+              <div class="box-title">Modo 1: Servidor Web HTTP / SSE (Producción en Red)</div>
+              <div class="box-desc">
+                • <strong>Comando:</strong> <code>bun run serve:mcp</code><br>
+                • <strong>GET /sse:</strong> Abre el stream Server-Sent Events para clientes remotos.<br>
+                • <strong>POST /messages:</strong> Procesa el protocolo JSON-RPC 2.0 (<code>tools/list</code>, <code>tools/call</code>).<br>
+                • <strong>GET /tools & /health:</strong> Inspección REST rápida para pruebas.
+              </div>
+            </div>
+            <div class="feature-box highlight-emerald">
+              <div class="box-title">Modo 2: Canal STDIO (Integración con IDEs)</div>
+              <div class="box-desc">
+                • <strong>Comando:</strong> <code>bun run serve:mcp:stdio</code><br>
+                • Conecta por <code>stdin/stdout</code> directamente a <strong>Claude Desktop</strong>, <strong>Cursor</strong> o <strong>Antigravity</strong>.
+              </div>
+            </div>
+          </div>
+          <div class="code-panel">
+            <div class="code-header">
+              <span class="code-file">src/mcp/server.mjs</span>
+              <span>Servidor MCP Oficial</span>
+            </div>
+            <pre class="code-body"><code><span class="keyword">import</span> { McpServer } <span class="keyword">from</span> <span class="string">"@modelcontextprotocol/sdk/server/mcp.js"</span>;
+<span class="keyword">import</span> { SSEServerTransport } <span class="keyword">from</span> <span class="string">"@modelcontextprotocol/sdk/server/sse.js"</span>;
+
+<span class="keyword">const</span> server = <span class="keyword">new</span> <span class="function">McpServer</span>({ name: <span class="string">"EtherPulse MCP"</span>, version: <span class="string">"1.0.0"</span> });
+
+<span class="comment">// Registrar herramienta con validación Zod</span>
+server.<span class="function">tool</span>(
+  <span class="string">"get_agent_passport"</span>,
+  <span class="string">"Consulta pasaporte en 8004scan"</span>,
+  { agentId: z.number().default(<span class="hash">11287</span>) },
+  <span class="keyword">async</span> ({ agentId }) => {
+    <span class="keyword">const</span> data = <span class="keyword">await</span> <span class="function">querySepoliaPassport</span>(agentId);
+    <span class="keyword">return</span> { content: [{ type: <span class="string">"text"</span>, text: JSON.stringify(data) }] };
+  }
+);</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 10: INSPECCIÓN EN VIVO MCP (NUEVA CENTRAL) -->
+    <section class="slide" id="slide-9">
+      <div class="slide-card">
+        <div class="eyebrow emerald">
+          <span class="eyebrow-dot"></span>
+          Verificación Práctica • test-mcp-client.mjs
+        </div>
+        <h2 class="slide-title">Inspección en Vivo: Prueba de Herramientas MCP</h2>
+        <div class="grid-2col">
+          <div style="display: flex; flex-direction: column; gap: 14px;">
+            <p class="slide-lead" style="font-size: 1rem;">
+              Para verificar que el servidor MCP responde fielmente al protocolo, ejecutamos el cliente de pruebas 
+              <code>bun run test:mcp</code>:
+            </p>
+            <div class="feature-box highlight">
+              <div class="box-title">1. Descubrimiento Automático (tools/list)</div>
+              <div class="box-desc">
+                El cliente se conecta al endpoint SSE, negocia capacidades y obtiene las 4 herramientas disponibles con sus descripciones completas.
+              </div>
+            </div>
+            <div class="feature-box highlight-emerald">
+              <div class="box-title">2. Invocación de Herramientas (tools/call)</div>
+              <div class="box-desc">
+                • Ejecuta <code>analyze_liquidity_pool</code>: Calcula TVL ($51.7M) y slippage.<br>
+                • Ejecuta <code>get_agent_passport</code>: Consulta a Sepolia en tiempo real y extrae el pasaporte de <strong>Agent #11287</strong>.
+              </div>
+            </div>
+          </div>
+          <div class="code-panel">
+            <div class="code-header">
+              <span class="code-file">Consola de Salida • bun run test:mcp</span>
+              <span>Respuesta Exitosa</span>
+            </div>
+            <pre class="code-body"><code>  <span class="keyword">▸</span> Conectando al Servidor MCP: http://localhost:3001/sse
+  <span class="string">✔ Conexión SSE establecida con éxito!</span>
+
+1. Herramientas Descubiertas (tools/list):
+  • <span class="function">analyze_liquidity_pool</span>: Analiza liquidez Uniswap v3
+  • <span class="function">verify_contract_safety</span>: Auditoría estática on-chain
+  • <span class="function">get_sepolia_token_metrics</span>: Métricas ERC-20
+  • <span class="function">get_agent_passport</span>: Consulta pasaporte 8004scan
+
+2. Invocando 'get_agent_passport' para #11287:
+  <span class="string">✔ Pasaporte On-Chain resuelto exitosamente:</span>
+    ▸ Agent ID:        #11287
+    ▸ Dueño Legal:     0x000000000000000000000000...
+    ▸ Nombre On-Chain: EtherPulse Sepolia Analyst
+    ▸ Formato:         On-Chain Base64 Data URI</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 11: LABORATORIO PRIVADO END-TO-END -->
+    <section class="slide" id="slide-10">
+      <div class="slide-card">
+        <div class="eyebrow terracotta">
+          <span class="eyebrow-dot"></span>
+          Laboratorio Propio • demo.js (7 Pasos)
+        </div>
+        <h2 class="slide-title">Laboratorio Privado: Simulación End-to-End de 7 Pasos</h2>
+        <p class="slide-lead" style="font-size: 1rem;">
+          Para aprender la mecánica interna de cada contrato sin gastar gas de red, los estudiantes ejecutan <code>bun start</code>:
+        </p>
+        <div class="grid-3col" style="gap: 16px;">
+          <div class="feature-box">
+            <div class="box-title" style="font-size: 0.95rem;">1. Despliegue de Registros</div>
+            <div class="box-desc" style="font-size: 0.85rem;">
+              Despliega los 3 contratos singleton en memoria: Identity, Reputation y Validation.
+            </div>
+          </div>
+          <div class="feature-box highlight">
+            <div class="box-title" style="font-size: 0.95rem;">2. Cédula del Agente #1</div>
+            <div class="box-desc" style="font-size: 0.85rem;">
+              Acuña el NFT de identidad soberana y enlaza la wallet de trabajo operativo.
+            </div>
+          </div>
+          <div class="feature-box">
+            <div class="box-title" style="font-size: 0.95rem;">3. Inspección A2A / MCP</div>
+            <div class="box-desc" style="font-size: 0.85rem;">
+              El cliente resuelve la Agent Card y examina las herramientas de análisis.
+            </div>
+          </div>
+          <div class="feature-box highlight-emerald">
+            <div class="box-title" style="font-size: 0.95rem;">4. Análisis Financiero</div>
+            <div class="box-desc" style="font-size: 0.85rem;">
+              Calcula reservas, TVL y slippage, emitiendo el hash criptográfico <code>taskHash</code>.
+            </div>
+          </div>
+          <div class="feature-box">
+            <div class="box-title" style="font-size: 0.95rem;">5. Calificación Firmada</div>
+            <div class="box-desc" style="font-size: 0.85rem;">
+              El cliente califica (98/100) presentando la firma <code>feedbackAuth</code> del agente.
+            </div>
+          </div>
+          <div class="feature-box">
+            <div class="box-title" style="font-size: 0.95rem;">6. Atestación TEE SGX</div>
+            <div class="box-desc" style="font-size: 0.85rem;">
+              El nodo validador audita las matemáticas y emite certificado con nota 100/100.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 12: GUÍA PRÁCTICA Y ARSENAL DE COMANDOS -->
+    <section class="slide" id="slide-11">
+      <div class="slide-card">
+        <div class="eyebrow">
+          <span class="eyebrow-dot"></span>
+          Taller de Ingeniería • Arsenal de Comandos
+        </div>
+        <h2 class="slide-title">Guía Práctica del Estudiante: Tu Flujo de Trabajo</h2>
+        <p class="slide-lead">
+          Relación ordenada de comandos para completar la práctica de laboratorio y despliegue:
+        </p>
+        <div class="grid-2col">
+          <div class="feature-box">
+            <div class="box-title">🌐 Bloque A: Global Registry & Servidor MCP</div>
+            <div class="box-desc" style="font-family: var(--font-mono); font-size: 0.82rem; line-height: 1.8;">
+              • <strong style="color: var(--cyan);">bun run serve:mcp</strong> : Inicia el Servidor MCP (Puerto 3001).<br>
+              • <strong style="color: var(--cyan);">bun run test:mcp</strong> : Inspecciona herramientas y prueba el cliente.<br>
+              • <strong style="color: var(--cyan);">bun run status_global</strong> : Consulta el Agente #11287 en Sepolia.<br>
+              • <strong style="color: var(--cyan);">bun run update_card</strong> : Sincroniza la Agent Card en Sepolia.<br>
+              • <strong style="color: var(--cyan);">bun run registry_global</strong> : Registra un nuevo agente global.
+            </div>
+          </div>
+          <div class="feature-box highlight-emerald">
+            <div class="box-title">🔬 Bloque B: Laboratorio Privado & Smart Contracts</div>
+            <div class="box-desc" style="font-family: var(--font-mono); font-size: 0.82rem; line-height: 1.8;">
+              • <strong style="color: var(--emerald);">bun test</strong> : Corre las 27 pruebas unitarias.<br>
+              • <strong style="color: var(--emerald);">bun start</strong> : Simulación autónoma completa (7 pasos).<br>
+              • <strong style="color: var(--emerald);">bun run check-balance</strong> : Verifica fondos y RPC de Sepolia.<br>
+              • <strong style="color: var(--emerald);">bun run deploy:own</strong> : Despliega tus 3 contratos en Sepolia.
+            </div>
+          </div>
+        </div>
+        <div class="live-data-row">
+          <div class="data-pill">
+            <span class="label">Agente Oficial:</span>
+            <span class="val"><a href="https://8004scan.com/agent/11287" target="_blank">Agent #11287 (EtherPulse)</a></span>
+          </div>
+          <div class="data-pill">
+            <span class="label">Servidor MCP:</span>
+            <span class="val">http://localhost:3001/sse</span>
+          </div>
+          <div class="data-pill">
+            <span class="label">Abrir Diapositivas:</span>
+            <span class="val emerald">bun run slides</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- BOTTOM PROGRESS & CONTROLS FOOTER -->
+  <footer class="deck-footer">
+    <div class="progress-track">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+    <div class="footer-section" id="slideSectionName">
+      01 • Portada & Objetivos de Aprendizaje
+    </div>
+    <div class="key-hints">
+      <span>Navegar: <kbd>←</kbd> <kbd>→</kbd></span>
+      <span>Avanzar: <kbd>Espacio</kbd></span>
+      <span>Pantalla Completa: <kbd>F</kbd></span>
+    </div>
+    <div class="nav-controls">
+      <div class="slide-counter">
+        <span id="currentSlideNum">01</span> / <span>12</span>
+      </div>
+      <button class="btn-nav" id="prevBtn" title="Anterior [←]">‹</button>
+      <button class="btn-nav" id="nextBtn" title="Siguiente [→]">›</button>
+    </div>
+  </footer>
+
+  <!-- DECK CONTROLLER SCRIPT (12 Slides) -->
+  <script>
+    (function() {
+      const slides = document.querySelectorAll('.slide');
+      const totalSlides = slides.length;
+      let currentIndex = 0;
+
+      const slideNames = [
+        "01 • Portada & Objetivos de Aprendizaje",
+        "02 • Planteamiento del Problema: Machine-to-Machine",
+        "03 • La Tríada Arquitectónica: Tres Registros",
+        "04 • Separación de Poderes: Owner vs Hot Wallet",
+        "05 • Reputación Anti-Sybil y Validación TEE/zkML",
+        "06 • El Registro Global: Cómo Registrar un Agente en 8004scan",
+        "07 • El Secreto de Agent Card: Base64 vs IPFS {}",
+        "08 • Cómo Conectar la MCP al Agente ERC-8004",
+        "09 • Cómo Servir la MCP: Arquitectura del Servidor SSE & Stdio",
+        "10 • Inspección en Vivo: Prueba de Herramientas MCP",
+        "11 • Laboratorio Privado: Simulación End-to-End de 7 Pasos",
+        "12 • Guía Práctica del Estudiante y Arsenal de Comandos"
+      ];
+
+      const progressBar = document.getElementById('progressBar');
+      const currentSlideNum = document.getElementById('currentSlideNum');
+      const slideSectionName = document.getElementById('slideSectionName');
+      const prevBtn = document.getElementById('prevBtn');
+      const nextBtn = document.getElementById('nextBtn');
+      const slidePills = document.querySelectorAll('.pill-btn');
+      const fullscreenBtn = document.getElementById('fullscreenBtn');
+
+      function updateSlide(index) {
+        if (index < 0) index = 0;
+        if (index >= totalSlides) index = totalSlides - 1;
+        currentIndex = index;
+
+        slides.forEach((slide, idx) => {
+          if (idx === currentIndex) {
+            slide.classList.add('active');
+          } else {
+            slide.classList.remove('active');
+          }
+        });
+
+        slidePills.forEach((pill, idx) => {
+          if (idx === currentIndex) {
+            pill.classList.add('active');
+          } else {
+            pill.classList.remove('active');
+          }
+        });
+
+        const progressPct = ((currentIndex + 1) / totalSlides) * 100;
+        progressBar.style.width = `${progressPct}%`;
+
+        currentSlideNum.textContent = String(currentIndex + 1).padStart(2, '0');
+        slideSectionName.textContent = slideNames[currentIndex] || "";
+
+        prevBtn.disabled = (currentIndex === 0);
+        nextBtn.disabled = (currentIndex === totalSlides - 1);
+      }
+
+      prevBtn.addEventListener('click', () => updateSlide(currentIndex - 1));
+      nextBtn.addEventListener('click', () => updateSlide(currentIndex + 1));
+
+      slidePills.forEach(pill => {
+        pill.addEventListener('click', () => {
+          const targetIndex = parseInt(pill.getAttribute('data-index'), 10);
+          updateSlide(targetIndex);
+        });
+      });
+
+      window.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+        if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
+          e.preventDefault();
+          updateSlide(currentIndex + 1);
+        } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+          e.preventDefault();
+          updateSlide(currentIndex - 1);
+        } else if (e.key === 'Home') {
+          e.preventDefault();
+          updateSlide(0);
+        } else if (e.key === 'End') {
+          e.preventDefault();
+          updateSlide(totalSlides - 1);
+        } else if (e.key === 'f' || e.key === 'F') {
+          e.preventDefault();
+          toggleFullscreen();
+        }
+      });
+
+      function toggleFullscreen() {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(() => {});
+        } else {
+          if (document.exitFullscreen) {
+            document.exitFullscreen().catch(() => {});
+          }
+        }
+      }
+      fullscreenBtn.addEventListener('click', toggleFullscreen);
+
+      updateSlide(0);
+    })();
+  </script>
+</body>
+</html>

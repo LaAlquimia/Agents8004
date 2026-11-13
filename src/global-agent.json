@@ -1,0 +1,16 @@
+{
+  "network": "sepolia",
+  "chainId": 11155111,
+  "globalAgentId": "11287",
+  "name": "EtherPulse Sepolia Analyst",
+  "owner": "0x0000000000000000000000000000000000000000",
+  "agentCardUri": "data:application/json;base64,...",
+  "registerTxHash": "0x8936d67a6842c2efde0629af994ae88d76eba5807083887dbc215ccc0bee9de0",
+  "updateMetadataTxHash": "0xa546c752b6c7f5a806e4e32a6950351d23b9e27d4d142708c9bc6b88b76cfe9f",
+  "updateBlockNumber": 12071414,
+  "contracts": {
+    "IdentityRegistry": "0x8004A818BFB912233c491871b3d84c89A494BD9e",
+    "ReputationRegistry": "0x8004B663056A597Dffe9eCcC1965A193B7388713"
+  },
+  "scanUrl": "https://8004scan.com/agent/11287"
+}

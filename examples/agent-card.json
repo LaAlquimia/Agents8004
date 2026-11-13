@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
+  "name": "Sentinel Sepolia DeFi Agent",
+  "description": "Agente autónomo para optimización de liquidez en Uniswap v3 y análisis de riesgo en Ethereum Sepolia.",
+  "image": "https://raw.githubusercontent.com/ethereum/ethereum-org-website/master/src/assets/assets/eth-diamond-purple.png",
+  "version": "1.0.0",
+  "active": true,
+  "url": "https://sentinel.agent-node.network/a2a",
+  "provider": {
+    "name": "Alquimia Autonomous Systems",
+    "url": "https://alquimia.network",
+    "supportContact": "ops@alquimia.network"
+  },
+  "registrations": [
+    {
+      "chainId": 11155111,
+      "chainName": "Ethereum Sepolia",
+      "registryAddress": "0x8004A818BFB912233c491871b3d84c89A494BD9e",
+      "tokenId": "11287"
+    }
+  ],
+  "supportedTrust": [
+    "reputation",
+    "tee-attestation",
+    "crypto-economic"
+  ],
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": true,
+    "a2aVersion": "0.3.0",
+    "mcpVersion": "2024-11-05"
+  },
+  "securitySchemes": [
+    {
+      "type": "eip712",
+      "description": "Firma EIP-712 requerida para autorización de operaciones",
+      "chainId": 11155111
+    }
+  ],
+  "services": [
+    {
+      "name": "A2A",
+      "endpoint": "https://sentinel.agent-node.network/a2a/v1",
+      "version": "0.3.0"
+    },
+    {
+      "name": "MCP",
+      "endpoint": "https://sentinel.agent-node.network/mcp/v1",
+      "version": "2024-11-05",
+      "description": "Exposición de herramientas de cálculo de profundidad de pools y cotizaciones de slippage.",
+      "tools": [
+        {
+          "name": "analyze_liquidity_pool",
+          "description": "Obtiene la liquidez concentrada en rangos activos para pools en Uniswap v3 en Ethereum Sepolia.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "pool": { "type": "string" },
+              "token": { "type": "string" }
+            },
+            "required": ["pool", "token"]
+          }
+        }
+      ]
+    }
+  ]
+}
